@@ -5,45 +5,40 @@ from scanner.constants import (
     SYSTEM_IGNORE_FOLDERS,
     MAX_DEPTH,
 )
-from scanner.detector import is_project, is_zip_file
+from scanner.detector import detect_project, is_zip_file
 
 
 class ProjectRecord:
-    def __init__(self, path: Path, project_type: str):
+    def __init__(self, path: Path, project_type: str, ecosystem: str = None, has_git: bool = False):
         self.path = path
-        self.project_type = project_type  # "normal" or "archived"
+        self.project_type = project_type
+        self.ecosystem = ecosystem
+        self.has_git = has_git
 
 
 def should_ignore(folder: Path) -> bool:
-    """
-    Determines if a folder should be ignored.
-    """
-    if folder.name.lower() in {f.lower() for f in IGNORE_FOLDERS}:
+    name = folder.name.lower()
+
+    if name in {f.lower() for f in IGNORE_FOLDERS}:
         return True
 
-    if folder.name.lower() in {f.lower() for f in SYSTEM_IGNORE_FOLDERS}:
+    if name in {f.lower() for f in SYSTEM_IGNORE_FOLDERS}:
         return True
 
     return False
 
 
 def walk_space(space_path: str):
-    """
-    Controlled recursive project detection.
-    Stops descending once a project is found.
-    """
 
     space = Path(space_path)
 
     if not space.exists():
         raise ValueError(f"Path does not exist: {space_path}")
 
-    # Disallow scanning C:\
     if space.drive.upper() == "C:" and space == Path("C:/"):
         raise PermissionError("Scanning C:\\ root is not allowed.")
 
     projects = []
-
     start_time = time.time()
 
     def walk(current_path: Path, depth: int):
@@ -57,23 +52,37 @@ def walk_space(space_path: str):
             return
 
         # Detect project
-        try:
-            if is_project(current_path):
-                projects.append(ProjectRecord(current_path, "normal"))
-                return
-        except (PermissionError, OSError):
+        is_proj, ecosystem = detect_project(current_path)
+
+        if is_proj:
+            has_git = (current_path / ".git").exists()
+
+            projects.append(
+                ProjectRecord(
+                    current_path,
+                    "normal",
+                    ecosystem=ecosystem,
+                    has_git=has_git
+                )
+            )
             return
 
         try:
             children = list(current_path.iterdir())
         except (PermissionError, OSError):
-            # Skip folders we cannot access
             return
 
         # Detect zip archives
         for child in children:
             if is_zip_file(child):
-                projects.append(ProjectRecord(child, "archived"))
+                projects.append(
+                    ProjectRecord(
+                        child,
+                        "archived",
+                        ecosystem=None,
+                        has_git=False
+                    )
+                )
 
         # Continue recursion
         for child in children:

@@ -36,13 +36,21 @@ def scan(space_path: str):
         print(f"Project: {project.name}")
         print(f"Type: {project_type}")
 
+        if project_type != "archived":
+            print(f"Ecosystem: {record.ecosystem or 'Unknown'}")
+            print(f"Version Control: {'Git' if record.has_git else 'None'}")
+
+        git_activity = None
+
         if project_type == "archived":
             last_activity = get_file_modified_time(project)
             source = "Zip Archive"
             recent_commits = []
             status_counts["Archived"] += 1
+
         else:
-            git_activity = get_git_last_commit(project)
+            if record.has_git:
+                git_activity = get_git_last_commit(project)
 
             if git_activity:
                 last_activity = git_activity
@@ -53,20 +61,22 @@ def scan(space_path: str):
                 source = "Filesystem"
                 recent_commits = []
 
-            status, days_ago = calculate_status(last_activity)
+        status, days_ago = calculate_status(last_activity)
+
+        if project_type != "archived":
             status_counts[status] += 1
 
-            print(f"Last Activity: {last_activity}")
-            print(f"Days Ago: {days_ago}")
-            print(f"Status: {status}")
-            print(f"Source: {source}")
+        print(f"Last Activity: {last_activity}")
+        print(f"Days Ago: {days_ago}")
+        print(f"Status: {status}")
+        print(f"Source: {source}")
 
-            if recent_commits:
-                print("\nRecent Commits:")
-                for commit in recent_commits:
-                    print(
-                        f"  {commit['hash']} | {commit['date']} | {commit['message']}"
-                    )
+        if recent_commits:
+            print("\nRecent Commits:")
+            for commit in recent_commits:
+                print(
+                    f"  {commit['hash']} | {commit['date']} | {commit['message']}"
+                )
 
         print("=" * 60)
 
@@ -80,6 +90,7 @@ def scan(space_path: str):
     print(f"Warm: {status_counts['Warm']}")
     print(f"Cold: {status_counts['Cold']}")
     print(f"Frozen: {status_counts['Frozen']}")
+    print(f"Unknown: {status_counts['Unknown']}")
     print(f"Archived (zip): {status_counts['Archived']}")
     print(f"Scan Duration: {duration} seconds")
     print("#" * 60 + "\n")

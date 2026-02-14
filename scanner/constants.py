@@ -1,20 +1,57 @@
 # scanner/constants.py
 
-# Strong project detection signals
-STRONG_SIGNALS = {
-    ".git",
-    "package.json",
-    "pyproject.toml",
-    "requirements.txt",
-    "Cargo.toml",
-    "go.mod",
-    "composer.json",
-    "pom.xml",
-    "build.gradle",
-    "Makefile",
-    "Dockerfile",
-    "tsconfig.json",
+# Structured project detection signals grouped by ecosystem
+PROJECT_SIGNALS = {
+    "javascript": {
+        "package.json",
+        "tsconfig.json",
+        "next.config.js",
+        "vite.config.js",
+        "angular.json",
+    },
+    "python": {
+        "pyproject.toml",
+        "requirements.txt",
+        "setup.py",
+        "Pipfile",
+        "environment.yml",
+    },
+    "java": {
+        "pom.xml",
+        "build.gradle",
+        "settings.gradle",
+    },
+    "dotnet": {
+        ".sln",
+        ".csproj",
+    },
+    "go": {
+        "go.mod",
+    },
+    "rust": {
+        "Cargo.toml",
+    },
+    "php": {
+        "composer.json",
+    },
+    "mobile": {
+        "android",
+        "ios",
+        "app.json",
+        "pubspec.yaml",   # Flutter
+    },
+    "data": {
+        "notebook.ipynb",
+        ".ipynb_checkpoints",
+    },
+    "general": {
+        "Makefile",
+        "Dockerfile",
+    },
 }
+
+# Git is always strongest signal
+GIT_SIGNAL = ".git"
 
 # Folders to ignore during traversal
 IGNORE_FOLDERS = {
@@ -26,15 +63,19 @@ IGNORE_FOLDERS = {
     "venv",
     "__pycache__",
     ".next",
+    ".idea",
+    ".vscode",
+    ".gradle",
+    "target",
 }
 
 # Windows system folders to ignore
 SYSTEM_IGNORE_FOLDERS = {
-    "Windows",
-    "Program Files",
-    "Program Files (x86)",
-    "$Recycle.Bin",
-    "System Volume Information",
+    "windows",
+    "program files",
+    "program files (x86)",
+    "$recycle.bin",
+    "system volume information",
 }
 
 # Maximum recursion depth
