@@ -1,16 +1,53 @@
 import subprocess
 from pathlib import Path
 from datetime import datetime
+from scanner.constants import IGNORE_FOLDERS
 
-IGNORE_FOLDERS = {
-    "node_modules",
-    "vendor",
-    "dist",
-    "build",
-    ".cache",
-    "venv",
-    "__pycache__",
-}
+def get_git_recent_commits(project_path: Path, limit: int = 3):
+    """
+    Returns last N commits as list of dicts:
+    [{hash, message, date}]
+    """
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(project_path),
+                "log",
+                f"-{limit}",
+                "--pretty=format:%H|%cd|%s",
+                "--date=iso-strict",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=5,
+        )
+
+        lines = result.stdout.strip().split("\n")
+        commits = []
+
+        for line in lines:
+            if not line.strip():
+                continue
+
+            commit_hash, date_str, message = line.split("|", 2)
+            dt = datetime.fromisoformat(date_str).replace(tzinfo=None)
+
+            commits.append(
+                {
+                    "hash": commit_hash[:7],
+                    "date": dt,
+                    "message": message,
+                }
+            )
+
+        return commits
+
+    except Exception:
+        return []
+
 
 def get_git_last_commit(project_path: Path):
     """
@@ -59,3 +96,12 @@ def get_filesystem_last_modified(project_path: Path):
                 continue
 
     return latest_time
+
+def get_file_modified_time(file_path: Path):
+    """
+    Returns file modification time safely.
+    """
+    try:
+        return datetime.fromtimestamp(file_path.stat().st_mtime)
+    except Exception:
+        return None
