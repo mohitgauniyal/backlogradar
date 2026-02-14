@@ -1,7 +1,9 @@
 import sys
-from pathlib import Path
-from scanner.detector import find_projects
-from scanner.activity import get_git_last_commit, get_filesystem_last_modified
+from scanner.walker import walk_space
+from scanner.activity import (
+    get_git_last_commit,
+    get_filesystem_last_modified,
+)
 from scanner.status import calculate_status
 from logger import setup_logger
 
@@ -11,35 +13,36 @@ logger = setup_logger()
 def scan(space_path: str):
     logger.info(f"Starting scan for space: {space_path}")
 
-    projects = find_projects(space_path)
+    projects, duration = walk_space(space_path)
 
-    logger.info(f"Detected {len(projects)} potential projects")
+    logger.info(f"Detected {len(projects)} projects (including archives)")
 
-    if not projects:
-        logger.warning("No projects found.")
-        return
+    for record in projects:
+        project = record.path
+        project_type = record.project_type
 
-    for project in projects:
-        logger.info(f"Scanning project: {project.name}")
+        logger.info(f"Scanning: {project.name} ({project_type})")
 
-        git_activity = get_git_last_commit(project)
-
-        if git_activity:
-            last_activity = git_activity
-            activity_source = "Git"
-            logger.info("Using Git activity")
+        if project_type == "archived":
+            last_activity = get_filesystem_last_modified(project.parent)
+            source = "Zip archive"
         else:
-            logger.info("No git activity found, using filesystem fallback")
-            last_activity = get_filesystem_last_modified(project)
-            activity_source = "Filesystem"
+            git_activity = get_git_last_commit(project)
+
+            if git_activity:
+                last_activity = git_activity
+                source = "Git"
+            else:
+                last_activity = get_filesystem_last_modified(project)
+                source = "Filesystem"
 
         status, days_ago = calculate_status(last_activity)
 
         logger.info(
-            f"{project.name} | Status: {status} | Days ago: {days_ago} | Source: {activity_source}"
+            f"{project.name} | {status} | {days_ago} days ago | Source: {source}"
         )
 
-    logger.info("Scan completed.")
+    logger.info(f"Scan completed in {duration} seconds.")
 
 
 if __name__ == "__main__":
